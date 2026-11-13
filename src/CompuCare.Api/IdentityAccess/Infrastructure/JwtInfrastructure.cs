@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using CompuCare.Application.Common;
+using CompuCare.Application.IdentityAccess;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CompuCare.Api.IdentityAccess.Infrastructure;
