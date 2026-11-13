@@ -132,21 +132,20 @@ public sealed class ServiceRequestService(
         var ticket = await AuthorizedTicketAsync(id, ct);
         var quotes = await quotations.ListAsync(x => x.RequestId == ticket.Id, ct);
         var unresolved = quotes.Any(q => q.Status is QuotationStatus.Pending or QuotationStatus.Rejected);
-        var subscription = await subscriptions.FirstAsync(x => x.CompanyId == ticket.CompanyId, ct);
-        var percentBefore = subscription is null || subscription.MonthlyHours <= 0m ? 0m :
+        var subscription = await subscriptions.FirstAsync(x => x.CompanyId == ticket.CompanyId, ct)
+            ?? throw new AppException(409, "An active subscription is required to complete service requests.");
+        var percentBefore = subscription.MonthlyHours <= 0m ? 0m :
             100m * subscription.UsedHours / subscription.MonthlyHours;
         ticket.Resolve(current.UserId, request.Hours, unresolved, request.Diagnosis, request.WorkDone);
-        if (subscription is not null)
+        if (!subscription.Consume(ticket.Id, request.Hours))
+            throw new AppException(409, "Support hours have already been registered for this ticket.");
+        var percentAfter = 100m * subscription.UsedHours / subscription.MonthlyHours;
+        if (percentBefore < 80m && percentAfter >= 80m)
         {
-            subscription.Consume(ticket.Id, request.Hours);
-            var percentAfter = 100m * subscription.UsedHours / subscription.MonthlyHours;
-            if (percentBefore < 80m && percentAfter >= 80m)
-            {
-                var recipients = await users.ListAsync(x => x.CompanyId == ticket.CompanyId &&
-                    (x.Role == "admin" || x.Role == "company_manager"), ct);
-                foreach (var recipient in recipients)
-                    await notify.NotifyAsync(recipient.Id, "You have used 80% of your monthly support hours.", ct);
-            }
+            var recipients = await users.ListAsync(x => x.CompanyId == ticket.CompanyId &&
+                (x.Role == "admin" || x.Role == "company_manager"), ct);
+            foreach (var recipient in recipients)
+                await notify.NotifyAsync(recipient.Id, "You have used 80% of your monthly support hours.", ct);
         }
         // One EF Core DbContext tracks request, subscription, coverage journal, and notifications.
         await tickets.SaveAsync(ct);
