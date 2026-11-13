@@ -6,6 +6,12 @@ Backend REST de **CompuCare**, construido en **C# / ASP.NET Core 10 / Entity Fra
 
 **Repositorio frontend:** https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-web-app
 
+## Reparto de trabajo del equipo (13/11/2026)
+
+**Entrega parcial deliberada:** esta rama restaura **51 de los 68 archivos** del backend original (75 % por cantidad de archivos) en siete commits: base DDD, BC04, BC03, BC02, BC05, BC01 e infraestructura. Los **17 archivos restantes** están en un ZIP entregado al equipo para revisión y aportes en nuevos Pull Requests.
+
+En esta etapa **faltan en el repositorio** pruebas unitarias completas, prueba HTTP entre cuentas, algunos workflows, configuración Docker/Railway, documentación complementaria y el controlador de notificaciones. Por tanto, **no se declara completa la validación del backend ni el despliegue** hasta que se integren esos cambios. Los commits y autores originales siguen visibles; la reorganización no pretende atribuir a terceros el trabajo anterior.
+
 ## Bounded Contexts
 
 | Prioridad estratégica | Código | Bounded Context | Agregado principal |
@@ -25,10 +31,8 @@ src/
   CompuCare.Infrastructure/      # Infrastructure: EF Core, PostgreSQL, security, email
   CompuCare.Api/                 # Interfaces: ASP.NET controllers, JWT, composition
 tests/
-  CompuCare.Domain.Tests/        # Invariant-focused tests for BC01 through BC05
-docs/
-  architecture.md
-  frontend-contract.md
+  CompuCare.Domain.Tests/        # Project references only; test cases in teammate handoff ZIP
+# docs/ pending reintegration by the team
 ```
 
 Los directorios de BC se repiten en las distintas capas; **no** representan cinco microservicios desplegados. El frontend Vue 3 está en otro repositorio.
@@ -38,7 +42,7 @@ Los directorios de BC se repiten en las distintas capas; **no** representan cinc
 Requisitos: **.NET SDK 10**, PostgreSQL 16+ o Docker, y terminal integrada. No es necesario Visual Studio.
 
 1. Clona este repositorio en WebStorm.
-2. Ejecuta `docker compose up -d` para iniciar la base de datos local.
+2. Inicia una instancia de PostgreSQL 16+ instalada localmente. El archivo `docker-compose.yml` está en el ZIP de tareas de despliegue pendiente de integrar.
 3. Ejecuta `dotnet restore CompuCare.sln`.
 4. Ejecuta `dotnet run --project src/CompuCare.Api` (entorno `Development`).
 5. Abre `http://localhost:5147/swagger` o `http://localhost:5147/health`.
@@ -54,7 +58,7 @@ DemoSeed__Enabled=true
 DemoSeed__Password=<tu contraseña temporal segura de 12 caracteres o más>
 ```
 
-Al activarlo **solo en Development**, se crean cuentas de prueba para los roles `sysadmin`, `technician`, `admin` y `employee`, y un equipo asignado. En producción el seed de usuarios está desactivado **por defecto**. Para una demo académica con datos ficticios, existe una opción de arranque explícita y protegida con contraseña privada: `DemoBootstrap__Enabled=true` y `DemoBootstrap__Password` de al menos 16 caracteres. Consulta [Railway Deployment](docs/railway-deployment.md). No la habilites con datos reales. Alternativamente, registra una empresa a través de `POST /api/v1/auth/register`.
+Al activarlo **solo en Development**, se crean cuentas de prueba para los roles `sysadmin`, `technician`, `admin` y `employee`, y un equipo asignado. En producción el seed de usuarios está desactivado **por defecto**. Para una demo académica con datos ficticios, existe una opción de arranque explícita y protegida con contraseña privada: `DemoBootstrap__Enabled=true` y `DemoBootstrap__Password` de al menos 16 caracteres. La guía de Railway está pendiente de reintegración desde el ZIP del equipo. No la habilites con datos reales. Alternativamente, registra una empresa a través de `POST /api/v1/auth/register`.
 
 ### Conectar con el frontend
 
@@ -68,7 +72,7 @@ Reinicia Vite tras modificar el entorno. La API utiliza **JWT Bearer**. Las soli
 
 ## REST y documentación
 
-Los endpoints compatibles con el frontend se describen en [docs/frontend-contract.md](docs/frontend-contract.md).
+Los endpoints compatibles con el frontend usan `/api/v1`; el contrato detallado está temporalmente en el ZIP asignado al equipo.
 
 | BC | Funciones |
 | --- | --- |
@@ -87,9 +91,9 @@ dotnet build CompuCare.sln
 dotnet test CompuCare.sln
 ```
 
-GitHub Actions compila y ejecuta las pruebas unitarias. La comprobación de migraciones valida la creación del modelo EF Core.
+GitHub Actions ejecuta la compilación .NET. Los casos de prueba unitarios y el workflow de integración con PostgreSQL están asignados al equipo y no se encuentran en esta entrega parcial. No debe interpretarse un `dotnet test` sin casos como cobertura de pruebas aprobada.
 
-Se añadió una **prueba HTTP de integración con PostgreSQL** en `scripts/smoke_cross_accounts.py`, ejecutada por `.github/workflows/integration-ci.yml`. Comprueba el siguiente flujo con JWT, cuatro cuentas y una misma base de datos: empleado registra ticket → administrador UniLink asigna técnico → técnico diagnostica y cotiza → administrador empresarial aprueba → técnico finaliza → empleado ve el estado y se descuenta exactamente una hora de cobertura. Además, verifica que un empleado no pueda asignar técnicos ni aprobar cotizaciones.
+La prueba HTTP original del flujo entre cuatro cuentas (`scripts/smoke_cross_accounts.py`) se transfirió al ZIP para que los compañeros la revisen, amplíen y vuelvan a subir con evidencia verificable. Hasta entonces ese flujo **no está validado en esta versión parcial**.
 
 **La prueba necesita PostgreSQL y el seed de desarrollo**. No es prueba de despliegue a Internet: la API todavía debe publicarse y conectarse a Netlify.
 
@@ -107,6 +111,6 @@ El catálogo de desarrollo se corresponde con la landing pública: **Básico S/2
 
 ## GitFlow
 
-`main` es la versión estable, `dev` la rama de integración y `feature/backend-implement-bc01-bc05` la rama de implementación. Los merges a `dev` o `main` deben realizarse con revisión y CI aprobado.
+`main` contiene la versión parcial resultante de la reorganización; `dev` es una rama de integración previa y las nuevas aportaciones deben entrar mediante ramas `feature/*` y Pull Requests reales, con sus correspondientes comprobaciones.
 
 **Mantenimiento:** antes de desplegar, generar/aplicar migraciones EF Core, configurar CORS, HTTPS, SMTP y secretos JWT seguros, y comprobar los recorridos de los cuatro roles con el frontend.
