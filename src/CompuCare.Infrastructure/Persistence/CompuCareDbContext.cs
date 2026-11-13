@@ -101,6 +101,7 @@ public sealed class CompuCareDbContext(DbContextOptions<CompuCareDbContext> opti
                 item.ToTable("coverage_consumptions");
                 item.WithOwner().HasForeignKey("subscription_id");
                 item.HasKey(x => x.Id);
+                item.Property(x => x.Id).ValueGeneratedNever();
                 item.Property(x => x.Hours).HasPrecision(10, 2);
                 item.HasIndex("subscription_id", nameof(CoverageConsumption.TicketId),
                     nameof(CoverageConsumption.PeriodStartedAtUtc)).IsUnique();
@@ -131,6 +132,7 @@ public sealed class CompuCareDbContext(DbContextOptions<CompuCareDbContext> opti
                 line.ToTable("ticket_timeline");
                 line.WithOwner().HasForeignKey("service_request_id");
                 line.HasKey(x => x.Id);
+                line.Property(x => x.Id).ValueGeneratedNever();
                 line.Property(x => x.Status).HasMaxLength(55).IsRequired();
             });
             e.Navigation(x => x.Timeline).UsePropertyAccessMode(PropertyAccessMode.Field);
@@ -148,6 +150,7 @@ public sealed class CompuCareDbContext(DbContextOptions<CompuCareDbContext> opti
                 line.ToTable("quotation_lines");
                 line.WithOwner().HasForeignKey("quotation_id");
                 line.HasKey(x => x.Id);
+                line.Property(x => x.Id).ValueGeneratedNever();
                 line.Property(x => x.Description).HasMaxLength(500).IsRequired();
                 line.Property(x => x.Cost).HasPrecision(12, 2);
             });
