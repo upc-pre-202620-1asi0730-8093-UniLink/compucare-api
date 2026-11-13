@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceRequestRepository, EfServiceRequestRepository>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<INotificationWriter, NotificationWriter>();
         return services;
     }
 }
