@@ -1,105 +1,112 @@
 # CompuCare API — UniLink
 
-Backend inicial para **CompuCare**, proyecto de Aplicaciones Web de UniLink (1ASI0730). 
+![Backend CI](https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-api/actions/workflows/dotnet-ci.yml/badge.svg)
 
-**Estado:** scaffold arquitectónico DDD, **no** es una API funcional lista para producción. Implementa la estructura por capas, un ejemplo de Aggregate Root, persistencia relacional EF Core y el endpoint de salud. Los endpoints de tickets, autenticación y demás reglas todavía deben desarrollarse y probarse con el frontend oficial.
+Backend REST de **CompuCare**, construido en **C# / ASP.NET Core 10 / Entity Framework Core / PostgreSQL** mediante un **monolito modular DDD**. Se ha utilizado como referencia metodológica el patrón de Bounded Contexts, Commands/Queries, repositorios y REST Resources de los proyectos académicos *Catch-Up Platform* y *Learning Center Platform*. El código se ha desarrollado específicamente para el dominio CompuCare.
 
-## Bounded Contexts (orden estratégico)
+**Repositorio frontend:** https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-web-app
 
-| Tipo | BC | Responsabilidad |
-| --- | --- | --- |
-| **Core** | **BC04 Service Requests** | Tickets, asignaciones, diagnóstico y cierre |
-| **Core** | **BC03 Subscriptions and Coverage** | Planes, horas de soporte y mantenimientos |
-| **Supporting** | **BC02 Companies and Equipment** | Empresas, sedes y activos |
-| **Supporting** | **BC05 Quotations and Payments** | Cotizaciones, aprobaciones y pagos simulados |
-| **Generic** | **BC01 Identity and Access** | Identidad, autenticación y permisos |
+## Bounded Contexts
 
-La clasificación no cambia los identificadores del informe. Los módulos no equivalen necesariamente a microservicios: esta solución empieza como **monolito modular DDD**.
+| Prioridad estratégica | Código | Bounded Context | Agregado principal |
+| --- | --- | --- | --- |
+| **Core** | BC04 | Service Requests | `ServiceRequest` |
+| **Core** | BC03 | Subscriptions and Coverage | `Subscription` |
+| **Supporting** | BC02 | Companies and Equipment | `Equipment`, `Company` |
+| **Supporting** | BC05 | Quotations and Payments | `Quotation` |
+| **Generic** | BC01 | Identity and Access | `UserAccount` |
 
-## Estructura
+Cada BC contiene clases de dominio, servicios de aplicación y adaptadores REST propios. Los proyectos separan las dependencias técnicamente:
 
 ```text
-CompuCare.sln
 src/
-  CompuCare.Domain/           # Reglas puras, agregados, Value Objects y Domain Events
-  CompuCare.Application/      # Use cases, DTOs y puertos abstractos
-  CompuCare.Infrastructure/   # EF Core, PostgreSQL y adaptadores a terceros
-  CompuCare.Api/              # Endpoints, validación HTTP, DI y Swagger
-
+  CompuCare.Domain/              # Domain: Aggregates, Entities, domain rules
+  CompuCare.Application/         # Application: Commands, Queries, DTOs, repository ports
+  CompuCare.Infrastructure/      # Infrastructure: EF Core, PostgreSQL, security, email
+  CompuCare.Api/                 # Interfaces: ASP.NET controllers, JWT, composition
 tests/
-  CompuCare.Domain.Tests/     # Pruebas de invariantes del dominio
-
+  CompuCare.Domain.Tests/        # Invariant-focused tests for BC01 through BC05
 docs/
-  architecture.md             # Context Map y dependencias
-  frontend-contract.md        # Contratos a integrar con la SPA
+  architecture.md
+  frontend-contract.md
 ```
 
-## Requisitos
+Los directorios de BC se repiten en las distintas capas; **no** representan cinco microservicios desplegados. El frontend Vue 3 está en otro repositorio.
 
-- .NET SDK 10 (LTS)
-- Docker para PostgreSQL de desarrollo, o PostgreSQL 16+ local
-- Git
+## Ejecución local desde WebStorm
 
-## Primer arranque
+Requisitos: **.NET SDK 10**, PostgreSQL 16+ o Docker, y terminal integrada. No es necesario Visual Studio.
+
+1. Clona este repositorio en WebStorm.
+2. Ejecuta `docker compose up -d` para iniciar la base de datos local.
+3. Ejecuta `dotnet restore CompuCare.sln`.
+4. Ejecuta `dotnet run --project src/CompuCare.Api` (entorno `Development`).
+5. Abre `http://localhost:5147/swagger` o `http://localhost:5147/health`.
+
+El archivo `appsettings.Development.json` contiene **únicamente** parámetros de desarrollo. Los valores de producción (JWT, base de datos, SMTP y CORS) se deben configurar mediante secretos del entorno, nunca en GitHub.
+
+### Crear cuentas de demostración
+
+El seed del catálogo de planes es automático en `Development`. La creación de cuentas de demostración es **opcional** y requiere establecer estas variables en el entorno local, sin subir la contraseña al repositorio:
+
+```text
+DemoSeed__Enabled=true
+DemoSeed__Password=<tu contraseña temporal segura de 12 caracteres o más>
+```
+
+Al activarlo **solo en Development**, se crean cuentas de prueba para los roles `sysadmin`, `technician`, `admin` y `employee`, y un equipo asignado. En producción el seed de usuarios está desactivado. Alternativamente, registra una empresa a través de `POST /api/v1/auth/register`.
+
+### Conectar con el frontend
+
+En el repositorio `compucare-web-app`, agrega a `.env.local`:
+
+```dotenv
+VITE_UNILINK_API_URL=http://localhost:5147/api/v1
+```
+
+Reinicia Vite tras modificar el entorno. La API utiliza **JWT Bearer**. Las solicitudes y sus datos se comparten por una sola base de datos, pero **el servidor filtra cada consulta por el rol y la empresa del token**. El frontend nunca decide por sí mismo a qué empresa pertenece un ticket.
+
+## REST y documentación
+
+Los endpoints compatibles con el frontend se describen en [docs/frontend-contract.md](docs/frontend-contract.md).
+
+| BC | Funciones |
+| --- | --- |
+| BC01 | Login, registro, recuperación, empleados, técnicos, perfil |
+| BC02 | Equipos, sedes, asignaciones, historial |
+| BC03 | Planes, cobertura, suscripciones, renovación, mantenimientos |
+| BC04 | Crear y consultar tickets, asignar técnico, diagnosticar y cerrar |
+| BC05 | Crear/aprobar/rechazar cotizaciones y registrar pagos de prueba |
+
+Los endpoints se exponen bajo `/api/v1/`; Swagger está disponible en `/swagger` solo en Development.
+
+## Verificación
 
 ```bash
-# Crear una copia de la configuración de ejemplo y ajustar valores locales
-cp .env.example .env
-
-# Levantar PostgreSQL local (credenciales ficticias exclusivamente para desarrollo)
-docker compose up -d
-
-# Exportar la cadena de conexión en una terminal antes de ejecutar la API
-# Bash / macOS / Linux:
-export ConnectionStrings__CompuCare='Host=localhost;Port=5432;Database=compucare;Username=compucare;Password=compucare_dev_only'
-
-# Windows PowerShell:
-# $env:ConnectionStrings__CompuCare='Host=localhost;Port=5432;Database=compucare;Username=compucare;Password=compucare_dev_only'
-
-dotnet restore CompuCare.sln
 dotnet build CompuCare.sln
-# Aplicar migraciones de EF Core DESPUÉS de generarlas (no vienen incluidas en el scaffold)
-dotnet tool install --global dotnet-ef --version 10.0.0
-# dotnet ef migrations add InitialCreate --project src/CompuCare.Infrastructure --startup-project src/CompuCare.Api --output-dir Persistence/Migrations
-# dotnet ef database update --project src/CompuCare.Infrastructure --startup-project src/CompuCare.Api
-
-dotnet run --project src/CompuCare.Api
+dotnet test CompuCare.sln
 ```
 
-> `.env` **no se carga automáticamente** en el proceso .NET. Exporta las variables en la terminal, configura tu IDE o utiliza un gestor de secretos. No subas credenciales reales al repositorio.
+GitHub Actions compila y ejecuta las pruebas unitarias. La comprobación de migraciones valida la creación del modelo EF Core.
 
-Endpoints iniciales: `GET /health` y, en modo Development, Swagger `/swagger`. Los endpoints de negocio se implementarán por etapas y **no están disponibles todavía**.
+Se añadió una **prueba HTTP de integración con PostgreSQL** en `scripts/smoke_cross_accounts.py`, ejecutada por `.github/workflows/integration-ci.yml`. Comprueba el siguiente flujo con JWT, cuatro cuentas y una misma base de datos: empleado registra ticket → administrador UniLink asigna técnico → técnico diagnostica y cotiza → administrador empresarial aprueba → técnico finaliza → empleado ve el estado y se descuenta exactamente una hora de cobertura. Además, verifica que un empleado no pueda asignar técnicos ni aprobar cotizaciones.
 
-## Orden técnico recomendado
+**La prueba necesita PostgreSQL y el seed de desarrollo**. No es prueba de despliegue a Internet: la API todavía debe publicarse y conectarse a Netlify.
 
-1. BC01: ASP.NET Core Identity, JWT seguro, roles `employee`, `admin`/`company_manager`, `technician`, `sysadmin`; políticas de acceso.
-2. BC02: empresas, sedes, equipos y asignaciones, validando aislamiento de empresa.
-3. BC04: crear solicitud, bandejas por rol, asignar técnico, iniciar diagnóstico, cerrar, cancelar, timeline, estado de cotización.
-4. BC03: planes, coberturas, consumo idempotente de horas, mantenimiento preventivo.
-5. BC05: cotizar, aprobar/rechazar, pago **simulado** y restricción de cierre con cotizaciones pendientes.
-6. Conectar la SPA `compucare-web-app`, habilitar CORS específico, Swagger, pruebas de integración y despliegue.
+El catálogo de desarrollo se corresponde con la landing pública: **Básico S/240 (4 horas, 1 visita)**, **Empresarial S/550 (8 horas, 2 visitas)**, **Integral S/600 (16 horas, 4 visitas)**. Si ya existe una base local creada con valores anteriores, ajusta los planes mediante una migración de datos revisada o crea una nueva base **solo de desarrollo**; el seeder no reemplaza planes existentes.
 
-### Integración con el frontend
+## Seguridad y límites del prototipo
 
-Frontend oficial: https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-web-app
+- Password hashes PBKDF2-SHA256 con sal aleatoria y 210 000 iteraciones; contraseñas nunca se almacenan en texto plano.
+- JWT firmado con clave configurada externamente en producción; permisos y tenencia validados en Application.
+- Recuperación con token de un solo uso y expiración; su valor solo aparece en la respuesta durante Development.
+- Envío de emails configurable mediante SMTP: en producción falla explícitamente si no está configurado.
+- Los pagos son **simulados**; nunca se recopilan números completos, CVV o vencimiento de tarjetas.
+- Las notificaciones internas se persisten en la base de datos; entrega en tiempo real (WebSocket/SSE) y correo transaccional adicional requieren integración posterior.
+- No existe todavía un despliegue de producción verificado. La documentación debe distinguir código implementado, tests y servicios desplegados.
 
-Su cliente HTTP usa `VITE_UNILINK_API_URL`. El contrato propuesto se documenta en [`docs/frontend-contract.md`](docs/frontend-contract.md). El backend debe aplicar autorización en cada consulta y comando, nunca confiar solo en los guards de Vue.
+## GitFlow
 
-## Advertencias de seguridad
+`main` es la versión estable, `dev` la rama de integración y `feature/backend-implement-bc01-bc05` la rama de implementación. Los merges a `dev` o `main` deben realizarse con revisión y CI aprobado.
 
-- No hay login, API de tickets ni migraciones iniciales **implementados** en este scaffold.
-- Proteger con JWT/roles/tenant filtering antes de publicar endpoints de negocio.
-- No copiar contraseñas en texto plano ni la emisión de tokens de demostración del JSON Server antiguo.
-- Los pagos son **simulados**. No solicitar ni almacenar datos reales de tarjetas.
-
-## Trabajar con WebStorm
-
-Puedes clonar este repositorio con **WebStorm → Get from VCS** y pegar:
-
-```text
-https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-api.git
-```
-
-Abre una terminal integrada y utiliza `dotnet restore`, `dotnet build`, `dotnet test` y `dotnet run`. **No es obligatorio abrir Visual Studio**: el archivo `CompuCare.sln` solo agrupa los proyectos de .NET. Para autocompletado, depuración y refactorizaciones avanzadas en C# se recomienda Rider o Visual Studio, pero WebStorm permite editar el código y ejecutar el SDK desde la terminal.
-
-Los cambios futuros deben pasar por ramas `feature/bcXX-*` y Pull Requests al repositorio oficial.
+**Mantenimiento:** antes de desplegar, generar/aplicar migraciones EF Core, configurar CORS, HTTPS, SMTP y secretos JWT seguros, y comprobar los recorridos de los cuatro roles con el frontend.
