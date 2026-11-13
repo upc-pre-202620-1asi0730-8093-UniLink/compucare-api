@@ -14,9 +14,9 @@ public static class DevelopmentSeeder
     {
         if (await db.Plans.AnyAsync(ct)) return;
         await db.Plans.AddRangeAsync(
-            Plan.Publish("basico", "Básico", 99m, 5m, 1),
-            Plan.Publish("empresarial", "Empresarial", 249m, 15m, 2),
-            Plan.Publish("integral", "Integral", 499m, 30m, 4));
+            Plan.Publish("basico", "Básico", 240m, 4m, 1),
+            Plan.Publish("empresarial", "Empresarial", 550m, 8m, 2),
+            Plan.Publish("integral", "Integral", 600m, 16m, 4));
         await db.SaveChangesAsync(ct);
     }
     /// <summary>Optional account fixtures. Password is read ONLY from untracked configuration.</summary>
