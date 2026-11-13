@@ -2,6 +2,8 @@ using CompuCare.Application.Common;
 using CompuCare.Domain.CompaniesEquipment;
 using CompuCare.Domain.IdentityAccess;
 using CompuCare.Domain.ServiceRequests;
+using CompuCare.Domain.QuotationsPayments;
+using CompuCare.Domain.SubscriptionsCoverage;
 
 namespace CompuCare.Application.CompaniesEquipment;
 
@@ -23,6 +25,8 @@ public sealed class CompanyEquipmentService(
     IEntityStore<EquipmentAssignment> assignments,
     IEntityStore<UserAccount> users,
     IEntityStore<ServiceRequest> tickets,
+    IEntityStore<Quotation> quotations,
+    IEntityStore<MaintenanceVisit> visits,
     ICurrentUser current)
 {
     private Guid Company => Access.Company(current);
@@ -122,8 +126,33 @@ public sealed class CompanyEquipmentService(
         var item = await equipment.FirstAsync(x => x.Id == id && x.CompanyId == Company, ct)
             ?? throw new AppException(404, "Equipment not found.");
         var events = await assignments.ListAsync(x => x.EquipmentId == id, ct);
+        var linkedTickets = await tickets.ListAsync(x => x.EquipmentId == id && x.CompanyId == Company, ct);
+        var related = new List<object>();
+        foreach (var ticket in linkedTickets.OrderByDescending(x => x.CreatedAtUtc))
+        {
+            var ticketQuotes = await quotations.ListAsync(q => q.RequestId == ticket.Id, ct);
+            related.Add(new
+            {
+                ticket.Id, ticket.Category, ticket.Description,
+                Status = ticket.Status switch {
+                    ServiceRequestStatus.PendingAssignment => "Pendiente de Asignación",
+                    ServiceRequestStatus.Assigned => "Asignado",
+                    ServiceRequestStatus.InDiagnosis => "En Diagnóstico",
+                    ServiceRequestStatus.Resolved => "Atendido",
+                    ServiceRequestStatus.Cancelled => "Cancelado",
+                    _ => "Sin estado"
+                },
+                Quotes = ticketQuotes.Select(q => new {
+                    q.Id, TicketId = q.RequestId, q.Total, Status = q.Status.ToString()
+                }).ToList()
+            });
+        }
+        var maintenances = await visits.ListAsync(x => x.CompanyId == Company, ct);
+        var linkedVisits = maintenances.Where(x => x.EquipmentIds.Contains(id))
+            .OrderByDescending(x => x.Date)
+            .Select(x => (object)new { x.Id, x.Date, x.Time, x.Status }).ToList();
         return new(await MapAsync(item, ct), events.OrderByDescending(x => x.At)
             .Select(x => new AssignmentResource(x.Id, x.EquipmentId, x.EmployeeId, x.At)).ToList(),
-            new List<object>(), new List<object>());
+            related, linkedVisits);
     }
 }
