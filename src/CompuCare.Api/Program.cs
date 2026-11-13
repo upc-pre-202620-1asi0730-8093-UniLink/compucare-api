@@ -71,7 +71,7 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Databas
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CompuCareDbContext>();
-    await db.Database.EnsureCreatedAsync(); // development-only bootstrap, migrations needed in production
+    await db.Database.MigrateAsync(); // apply versioned EF Core migrations; requires a fresh local database
     await DevelopmentSeeder.SeedPlansAsync(db);
     if (app.Configuration.GetValue<bool>("DemoSeed:Enabled"))
     {
