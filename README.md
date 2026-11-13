@@ -54,7 +54,7 @@ DemoSeed__Enabled=true
 DemoSeed__Password=<tu contraseña temporal segura de 12 caracteres o más>
 ```
 
-Al activarlo **solo en Development**, se crean cuentas de prueba para los roles `sysadmin`, `technician`, `admin` y `employee`, y un equipo asignado. En producción el seed de usuarios está desactivado. Alternativamente, registra una empresa a través de `POST /api/v1/auth/register`.
+Al activarlo **solo en Development**, se crean cuentas de prueba para los roles `sysadmin`, `technician`, `admin` y `employee`, y un equipo asignado. En producción el seed de usuarios está desactivado **por defecto**. Para una demo académica con datos ficticios, existe una opción de arranque explícita y protegida con contraseña privada: `DemoBootstrap__Enabled=true` y `DemoBootstrap__Password` de al menos 16 caracteres. Consulta [Railway Deployment](docs/railway-deployment.md). No la habilites con datos reales. Alternativamente, registra una empresa a través de `POST /api/v1/auth/register`.
 
 ### Conectar con el frontend
 
