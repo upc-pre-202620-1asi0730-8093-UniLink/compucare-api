@@ -3,16 +3,15 @@ using System.Net.Mail;
 using CompuCare.Application.Common;
 using CompuCare.Application.IdentityAccess;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 
 namespace CompuCare.Infrastructure.Notifications;
 
 /// <summary>No silent fake emails in production; SMTP must be configured for real invitations.</summary>
-public sealed class SmtpEmailSender(IConfiguration config, IHostEnvironment host) : IEmailSender
+public sealed class SmtpEmailSender(IConfiguration config, IRuntimeMode runtime) : IEmailSender
 {
     public async Task SendAsync(string address, string subject, string body, CancellationToken ct = default)
     {
-        if (host.IsDevelopment()) return; // dev password is returned only by explicitly dev-only endpoints
+        if (runtime.IsDevelopment) return; // dev password is returned only by explicitly dev-only endpoints
         var server = config["Smtp:Host"];
         var from = config["Smtp:From"];
         if (string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(from))
