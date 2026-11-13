@@ -52,6 +52,10 @@ public sealed class Subscription
             throw new DomainRuleException("A ticket and positive support hours are required.");
         if (_consumptions.Any(x => x.TicketId == ticketId && x.PeriodStartedAtUtc == StartedAtUtc))
             return false; // idempotent request retry for current billing period
+        if (RenewsAtUtc <= DateTime.UtcNow)
+            throw new DomainRuleException("Subscription period has expired. Renew before consuming coverage.");
+        if (hours > AvailableHours)
+            throw new DomainRuleException("Insufficient support hours in the current subscription period.");
         _consumptions.Add(CoverageConsumption.Record(ticketId, StartedAtUtc, hours));
         UsedHours += hours;
         Version = Guid.NewGuid();
@@ -59,6 +63,8 @@ public sealed class Subscription
     }
     public void BookPreventive()
     {
+        if (RenewsAtUtc <= DateTime.UtcNow)
+            throw new DomainRuleException("Subscription period has expired. Renew before booking preventive support.");
         if (PreventiveRemaining < 1) throw new DomainRuleException("No preventive visits left in this period.");
         PreventiveUsed++;
         Version = Guid.NewGuid();
