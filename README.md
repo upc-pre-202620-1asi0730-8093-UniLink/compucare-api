@@ -87,7 +87,13 @@ dotnet build CompuCare.sln
 dotnet test CompuCare.sln
 ```
 
-GitHub Actions compila y ejecuta las pruebas unitarias. La comprobación de migraciones valida la creación del modelo EF Core. **Una compilación correcta no sustituye las pruebas HTTP de integración ni la verificación de despliegue.**
+GitHub Actions compila y ejecuta las pruebas unitarias. La comprobación de migraciones valida la creación del modelo EF Core.
+
+Se añadió una **prueba HTTP de integración con PostgreSQL** en `scripts/smoke_cross_accounts.py`, ejecutada por `.github/workflows/integration-ci.yml`. Comprueba el siguiente flujo con JWT, cuatro cuentas y una misma base de datos: empleado registra ticket → administrador UniLink asigna técnico → técnico diagnostica y cotiza → administrador empresarial aprueba → técnico finaliza → empleado ve el estado y se descuenta exactamente una hora de cobertura. Además, verifica que un empleado no pueda asignar técnicos ni aprobar cotizaciones.
+
+**La prueba necesita PostgreSQL y el seed de desarrollo**. No es prueba de despliegue a Internet: la API todavía debe publicarse y conectarse a Netlify.
+
+El catálogo de desarrollo se corresponde con la landing pública: **Básico S/240 (4 horas, 1 visita)**, **Empresarial S/550 (8 horas, 2 visitas)**, **Integral S/600 (16 horas, 4 visitas)**. Si ya existe una base local creada con valores anteriores, ajusta los planes mediante una migración de datos revisada o crea una nueva base **solo de desarrollo**; el seeder no reemplaza planes existentes.
 
 ## Seguridad y límites del prototipo
 
