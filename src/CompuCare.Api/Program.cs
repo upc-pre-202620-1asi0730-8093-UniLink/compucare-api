@@ -84,7 +84,16 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Databas
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CompuCareDbContext>();
-    await db.Database.EnsureCreatedAsync(); // local bootstrapping only: create EF migrations before production
+    await db.Database.EnsureCreatedAsync(); // development-only bootstrap, migrations needed in production
+    await DevelopmentSeeder.SeedPlansAsync(db);
+    if (app.Configuration.GetValue<bool>("DemoSeed:Enabled"))
+    {
+        var password = app.Configuration["DemoSeed:Password"];
+        if (string.IsNullOrWhiteSpace(password))
+            throw new InvalidOperationException("Set DemoSeed__Password in local, untracked environment settings.");
+        await DevelopmentSeeder.SeedDemoAccountsAsync(db,
+            scope.ServiceProvider.GetRequiredService<IPasswordHasher>(), password);
+    }
 }
 app.Run();
 public partial class Program { }
