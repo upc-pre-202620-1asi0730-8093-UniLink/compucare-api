@@ -22,13 +22,15 @@ jobs:
       - run: dotnet test CompuCare.sln --configuration Release --no-build --verbosity normal
 
   validate-migration:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/backend-implement-bc01-bc05'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'feature/backend-implement-bc01-bc05' && github.event.pull_request.head.repo.full_name == github.repository
     needs: build-test
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/backend-implement-bc01-bc05
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -55,7 +57,7 @@ jobs:
           git add src/CompuCare.Infrastructure/Persistence/Migrations/
           if ! git diff --cached --quiet; then
             git commit -m 'chore(ef): add generated PostgreSQL InitialCreate migration'
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            git push origin HEAD:feature/backend-implement-bc01-bc05
           fi
       - uses: actions/upload-artifact@v4
         with:
