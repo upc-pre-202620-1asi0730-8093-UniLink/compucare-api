@@ -92,19 +92,14 @@ Su cliente HTTP usa `VITE_UNILINK_API_URL`. El contrato propuesto se documenta e
 - No copiar contraseñas en texto plano ni la emisión de tokens de demostración del JSON Server antiguo.
 - Los pagos son **simulados**. No solicitar ni almacenar datos reales de tarjetas.
 
-## Subir a un repositorio nuevo de la organización
+## Trabajar con WebStorm
 
-1. En GitHub, organización `upc-pre-202620-1asi0730-8093-UniLink`, crear repositorio **público** llamado `compucare-api`, sin inicializar con README ni `.gitignore`.
-2. Copiar estos archivos a una carpeta local (no incluyas el ZIP dentro del repositorio).
-3. Ejecutar en la raíz de la carpeta:
+Puedes clonar este repositorio con **WebStorm → Get from VCS** y pegar:
 
-```bash
-git init
-git branch -M main
-git add .
-git commit -m "chore(backend): initialize DDD ASP.NET Core solution"
-git remote add origin https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-api.git
-git push -u origin main
+```text
+https://github.com/upc-pre-202620-1asi0730-8093-UniLink/compucare-api.git
 ```
 
-Una vez creado el repositorio, el código puede mantenerse mediante ramas `feature/bcXX-*` y Pull Requests.
+Abre una terminal integrada y utiliza `dotnet restore`, `dotnet build`, `dotnet test` y `dotnet run`. **No es obligatorio abrir Visual Studio**: el archivo `CompuCare.sln` solo agrupa los proyectos de .NET. Para autocompletado, depuración y refactorizaciones avanzadas en C# se recomienda Rider o Visual Studio, pero WebStorm permite editar el código y ejecutar el SDK desde la terminal.
+
+Los cambios futuros deben pasar por ramas `feature/bcXX-*` y Pull Requests al repositorio oficial.

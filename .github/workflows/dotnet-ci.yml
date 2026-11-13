@@ -1,0 +1,22 @@
+name: Backend CI
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+permissions:
+  contents: read
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore CompuCare.sln
+      - run: dotnet build CompuCare.sln --configuration Release --no-restore
+      - run: dotnet test CompuCare.sln --configuration Release --no-build --verbosity normal
