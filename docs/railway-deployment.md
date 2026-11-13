@@ -39,9 +39,9 @@ If the domain points at Railway but the browser refuses requests, verify `Cors__
 
 ## 3. Acceptance / cross-account verification
 
-The four roles do **not** have known production passwords. To create demo users **locally** only, enable `DemoSeed__Enabled` while running in Development with a private `DemoSeed__Password` of 12+ characters.
+The four roles do **not** have known production passwords. To create demo users locally, enable `DemoSeed__Enabled=true` in Development with private `DemoSeed__Password` (12+ characters). For a **fictitious academic demonstration on Railway only**, explicitly set `DemoBootstrap__Enabled=true` and a private, random `DemoBootstrap__Password` of at least 16 characters; `Database__RunMigrations=true` must also be enabled. Never publish the password, use real customer data with these accounts, or leave the bootstrap enabled after the demonstration.
 
-For production, use registration and invite employees via configured SMTP. Provision the internal UniLink technician and system administrator through a controlled provisioning process; do not expose a public endpoint that creates privileged roles. Avoid storing or printing temporary passwords in production.
+The optional academic bootstrap creates the four fixed test emails `soporte@unilink.pe` (sysadmin), `tecnico@unilink.pe` (technician), `admin@mype.pe` (company admin), and `empleada@mype.pe` (employee), all with the private configured bootstrap password. It also creates a fictitious company, subscription and employee-assigned equipment. In a production system with actual customers, provision privileged users through a controlled process and leave `DemoBootstrap__Enabled` off.
 
 Functional sequence: employee logs in and reports an issue → UniLink administrator assigns technician → technician sees the assigned ticket → technician issues any necessary quotation → company administrator approves → technician documents work → employee sees updated status → support-hour balance changes.
 
