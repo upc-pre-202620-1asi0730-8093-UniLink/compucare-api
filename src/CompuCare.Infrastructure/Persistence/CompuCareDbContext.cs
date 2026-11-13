@@ -16,6 +16,7 @@ public sealed class CompuCareDbContext(DbContextOptions<CompuCareDbContext> opti
     public DbSet<Equipment> Equipments => Set<Equipment>();
     public DbSet<Quotation> Quotations => Set<Quotation>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+    public DbSet<PasswordResetToken> ResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +60,16 @@ public sealed class CompuCareDbContext(DbContextOptions<CompuCareDbContext> opti
             e.Property(x => x.PasswordHash).HasMaxLength(1024);
             e.Property(x => x.Role).HasMaxLength(40);
             e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            e.Property(x => x.Phone).HasMaxLength(50);
+            e.Property(x => x.Position).HasMaxLength(140);
+        });
+        modelBuilder.Entity<PasswordResetToken>(e =>
+        {
+            e.ToTable("password_reset_tokens"); e.HasKey(x => x.Id);
+            e.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => x.UserId);
         });
     }
 }
