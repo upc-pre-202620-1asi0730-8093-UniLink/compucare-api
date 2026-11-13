@@ -79,11 +79,18 @@ if (app.Configuration.GetValue<bool>("Database:RunMigrations") ||
     var db = scope.ServiceProvider.GetRequiredService<CompuCareDbContext>();
     await db.Database.MigrateAsync(); // apply versioned EF Core migrations; use one instance for startup migrations
     await DevelopmentSeeder.SeedPlansAsync(db);
-    if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("DemoSeed:Enabled"))
+    var localDemo = app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("DemoSeed:Enabled");
+    // Explicit opt-in for an academic demonstration only. Never enabled for real customer data.
+    var publicDemo = app.Environment.IsProduction() && app.Configuration.GetValue<bool>("DemoBootstrap:Enabled");
+    if (localDemo || publicDemo)
     {
-        var password = app.Configuration["DemoSeed:Password"];
-        if (string.IsNullOrWhiteSpace(password))
-            throw new InvalidOperationException("Set DemoSeed__Password in local, untracked environment settings.");
+        var password = publicDemo
+            ? app.Configuration["DemoBootstrap:Password"]
+            : app.Configuration["DemoSeed:Password"];
+        if (string.IsNullOrWhiteSpace(password) || password.Length < (publicDemo ? 16 : 12))
+            throw new InvalidOperationException(publicDemo
+                ? "DemoBootstrap__Password must contain at least 16 characters and remain private."
+                : "DemoSeed__Password must contain at least 12 characters and remain private.");
         await DevelopmentSeeder.SeedDemoAccountsAsync(db,
             scope.ServiceProvider.GetRequiredService<IPasswordHasher>(), password);
     }
