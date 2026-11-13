@@ -60,20 +60,26 @@ if (origins.Length > 0)
 var app = builder.Build();
 app.UseExceptionHandler();
 if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
-if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
+// Railway terminates HTTPS at its public proxy; the container listens on internal HTTP.
+// Enforce HTTPS at the edge, rather than redirecting from behind a TLS terminator.
 if (origins.Length > 0) app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapGet("/health", () => Results.Ok(new { service = "CompuCare.Api", status = "healthy" })).AllowAnonymous();
+app.MapGet("/health", async (CompuCareDbContext db, CancellationToken ct) =>
+    await db.Database.CanConnectAsync(ct)
+        ? Results.Ok(new { service = "CompuCare.Api", status = "healthy", database = "connected" })
+        : Results.Json(new { service = "CompuCare.Api", status = "unhealthy", database = "unavailable" }, statusCode: 503))
+    .AllowAnonymous();
 
-if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Database:AutoCreateDevelopment"))
+if (app.Configuration.GetValue<bool>("Database:RunMigrations") ||
+    (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Database:AutoCreateDevelopment")))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CompuCareDbContext>();
-    await db.Database.MigrateAsync(); // apply versioned EF Core migrations; requires a fresh local database
+    await db.Database.MigrateAsync(); // apply versioned EF Core migrations; use one instance for startup migrations
     await DevelopmentSeeder.SeedPlansAsync(db);
-    if (app.Configuration.GetValue<bool>("DemoSeed:Enabled"))
+    if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("DemoSeed:Enabled"))
     {
         var password = app.Configuration["DemoSeed:Password"];
         if (string.IsNullOrWhiteSpace(password))
