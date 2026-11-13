@@ -72,6 +72,26 @@ public sealed class SubscriptionCoverageTests
         Assert.Single(subscription.Consumptions);
     }
     [Fact]
+    public void SupportHoursCannotExceedMonthlyCoverage()
+    {
+        var subscription = Active(); // Five hours available
+        Assert.Throws<DomainRuleException>(() => subscription.Consume(Guid.NewGuid(), 5.01m));
+        Assert.Equal(0m, subscription.UsedHours);
+        Assert.Empty(subscription.Consumptions);
+    }
+
+    [Fact]
+    public void ExactlyRemainingHoursCanBeConsumedOnce()
+    {
+        var subscription = Active();
+        var ticket = Guid.NewGuid();
+        Assert.True(subscription.Consume(ticket, 5m));
+        Assert.Equal(0m, subscription.AvailableHours);
+        Assert.False(subscription.Consume(ticket, 5m));
+        Assert.Throws<DomainRuleException>(() => subscription.Consume(Guid.NewGuid(), 0.01m));
+    }
+
+    [Fact]
     public void PreventiveQuotaCannotBeExceeded()
     {
         var subscription = Active();
