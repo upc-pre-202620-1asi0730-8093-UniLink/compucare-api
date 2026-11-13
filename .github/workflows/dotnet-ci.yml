@@ -20,3 +20,29 @@ jobs:
       - run: dotnet restore CompuCare.sln
       - run: dotnet build CompuCare.sln --configuration Release --no-restore
       - run: dotnet test CompuCare.sln --configuration Release --no-build --verbosity normal
+
+  validate-migration:
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore CompuCare.sln
+      - name: Install EF Core CLI
+        run: dotnet tool install --global dotnet-ef --version 10.0.0
+      - name: Generate initial EF migration
+        env:
+          ConnectionStrings__CompuCare: Host=127.0.0.1;Database=design_only;Username=design_only
+        run: |
+          dotnet ef migrations add InitialCreate \
+            --project src/CompuCare.Infrastructure/CompuCare.Infrastructure.csproj \
+            --startup-project src/CompuCare.Api/CompuCare.Api.csproj \
+            --output-dir Persistence/Migrations
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compucare-ef-migration
+          path: src/CompuCare.Infrastructure/Persistence/Migrations/
+          if-no-files-found: error
