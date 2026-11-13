@@ -3,6 +3,7 @@ using System.Text;
 using CompuCare.Application.Common;
 using CompuCare.Domain.CompaniesEquipment;
 using CompuCare.Domain.IdentityAccess;
+using CompuCare.Domain.SubscriptionsCoverage;
 
 namespace CompuCare.Application.IdentityAccess;
 
@@ -34,6 +35,8 @@ public interface IRuntimeMode
 public sealed class IamService(
     IEntityStore<UserAccount> users,
     IEntityStore<Company> companies,
+    IEntityStore<Plan> plans,
+    IEntityStore<Subscription> subscriptions,
     IEntityStore<PasswordResetToken> resetTokens,
     IPasswordHasher passwords,
     ITokenIssuer jwt,
@@ -66,13 +69,22 @@ public sealed class IamService(
             throw new AppException(409, "Company tax identifier is already registered.");
         if (await users.FirstAsync(x => x.Email == normalized, ct) is not null)
             throw new AppException(409, "Email is already registered.");
+        Plan? selectedPlan = null;
         if (resource.PlanId.HasValue)
-            throw new AppException(400, "Plan selection during registration is not available yet. Register first and subscribe from the dashboard.");
+        {
+            selectedPlan = await plans.FirstAsync(p => p.Id == resource.PlanId.Value, ct)
+                ?? throw new AppException(404, "Selected plan not found.");
+            if (resource.Payment is null || string.IsNullOrWhiteSpace(resource.Payment.Holder) ||
+                resource.Payment.Last4?.Length != 4 || !resource.Payment.Last4.All(char.IsDigit))
+                throw new AppException(400, "A fictitious cardholder and four test digits are required.");
+        }
         var company = Company.Register(resource.Company.Name, resource.Company.Ruc);
         var admin = UserAccount.Register(resource.Admin.Name, normalized, passwords.Hash(resource.Admin.Password),
             "admin", company.Id, "Administrador");
         await companies.AddAsync(company, ct);
         await users.AddAsync(admin, ct);
+        if (selectedPlan is not null)
+            await subscriptions.AddAsync(Subscription.Activate(company.Id, selectedPlan), ct);
         await users.SaveAsync(ct);
         return new RegistrationResult(Resource(admin), new CompanyResource(company.Name, company.TaxId));
     }
